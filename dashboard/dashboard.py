@@ -36,6 +36,7 @@ filtered_df = hour_df[
     (hour_df['dteday'].dt.date <= date_range[1])
 ]
 
+st.subheader("Working days Impact Analysis")
 # # Time series plot for number of user
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -45,7 +46,7 @@ with col2:
 with col3:
     st.metric("Registered Users", f"{filtered_df['registered'].sum():,}")
 
-st.subheader("Rental Trends Over Time")
+
 daily_data = filtered_df.groupby(['dteday', 'workingday']).agg({
     'casual': 'sum',
     'registered': 'sum',
@@ -113,7 +114,7 @@ weather_desc = {
 
 filtered_df['weather_desc'] = filtered_df['weathersit'].map(weather_desc)
 
-tab1, tab2 = st.tabs(["Average Rentals by Weather", "Weather Distribution"])
+tab1, tab2, tab3 = st.tabs(["Average Rentals by Weather", "Weather Distribution", "Weather Rentals Correlation"])
 
 # Bar Chart
 with tab1:
@@ -151,16 +152,16 @@ with tab2:
     
     st.plotly_chart(fig_scatter, use_container_width=True)
 
-# Correlation heatmap for weather-related variables
-st.subheader("Weather Factors Correlation")
-weather_vars = ['temp', 'atemp', 'hum', 'windspeed', 'cnt']
-corr_matrix = filtered_df[weather_vars].corr()
+with tab3:
+    # Correlation heatmap for weather-related variables
+    weather_vars = ['temp', 'atemp', 'hum', 'windspeed', 'cnt']
+    corr_matrix = filtered_df[weather_vars].corr()
 
-fig_corr = px.imshow(
-    corr_matrix,
-    labels=dict(color="Correlation"),
-    color_continuous_scale="RdBu",
-    title="Correlation between Weather Factors and Rentals"
-)
+    fig_corr = px.imshow(
+        corr_matrix,
+        labels=dict(color="Correlation"),
+        color_continuous_scale="RdBu",
+        title="Correlation between Weather Factors and Rentals"
+    )
 
-st.plotly_chart(fig_corr, use_container_width=True)
+    st.plotly_chart(fig_corr, use_container_width=True)
