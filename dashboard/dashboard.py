@@ -2,12 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
 
-# Set page config
 st.set_page_config(page_title="Bike Rental Dashboard", layout="wide")
 
-# Load data
 @st.cache_data
 def load_data():
     hour_df = pd.read_csv('data/hour.csv')
@@ -24,6 +21,7 @@ hour_df, day_df = load_data()
 # Title
 st.title("🚲 Bike Rental Analysis Dashboard")
 
+# PERTANYAAN 1
 # Date range filter
 st.sidebar.header("Filters")
 date_range = st.sidebar.date_input(
@@ -33,13 +31,12 @@ date_range = st.sidebar.date_input(
     max_value=hour_df['dteday'].max()
 )
 
-# Filter data based on date range
 filtered_df = hour_df[
     (hour_df['dteday'].dt.date >= date_range[0]) &
     (hour_df['dteday'].dt.date <= date_range[1])
 ]
 
-# Metrics for selected period
+# # Time series plot for number of user
 col1, col2, col3 = st.columns(3)
 with col1:
     st.metric("Total Users", f"{filtered_df['cnt'].sum():,}")
@@ -48,7 +45,6 @@ with col2:
 with col3:
     st.metric("Registered Users", f"{filtered_df['registered'].sum():,}")
 
-# Time series plot
 st.subheader("Rental Trends Over Time")
 daily_data = filtered_df.groupby(['dteday', 'workingday']).agg({
     'casual': 'sum',
@@ -58,34 +54,53 @@ daily_data = filtered_df.groupby(['dteday', 'workingday']).agg({
 
 fig = go.Figure()
 
-# Add traces for total users
+# Add traces for working days and non-working days (holiday or weekend) separately
 fig.add_trace(
     go.Scatter(
-        x=daily_data['dteday'],
-        y=daily_data['cnt'],
-        name="Total Users",
+        x=daily_data[daily_data['workingday'] == 1]['dteday'],
+        y=daily_data[daily_data['workingday'] == 1]['cnt'],
+        name="Working Day",
         mode='markers',
-        marker=dict(
-            color=daily_data['workingday'].map({1: 'blue', 0: 'red'}),
-            size=8
-        ),
+        marker=dict(color='blue', size=8),
         hovertemplate="<b>Date:</b> %{x}<br>" +
                       "<b>Total Users:</b> %{y}<br>" +
-                      "<b>Day Type:</b> %{text}<extra></extra>",
-        text=daily_data['workingday'].map({1: 'Working Day', 0: 'Non-working Day'})
+                      "<b>Day Type:</b> Working Day<extra></extra>"
+    )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=daily_data[daily_data['workingday'] == 0]['dteday'],
+        y=daily_data[daily_data['workingday'] == 0]['cnt'],
+        name="Non-working Day",
+        mode='markers',
+        marker=dict(color='red', size=8),
+        hovertemplate="<b>Date:</b> %{x}<br>" +
+                      "<b>Total Users:</b> %{y}<br>" +
+                      "<b>Day Type:</b> Non-working Day<extra></extra>"
     )
 )
 
 fig.update_layout(
-    title="Daily Bike Rentals (Blue: Working Day, Red: Non-working Day)",
+    title="Daily Bike Rentals",
     xaxis_title="Date",
     yaxis_title="Number of Rentals",
-    hovermode='x unified'
+    hovermode='x unified',
+    showlegend=True,
+    legend=dict(
+        yanchor="top",
+        y=0.99,
+        xanchor="right",
+        x=0.99,
+        bgcolor="rgba(255, 255, 255, 0.8)",
+        bordercolor="rgba(0, 0, 0, 0.3)",
+        borderwidth=1
+    )
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
-# Weather analysis
+# PERTANYAAN 2
 st.subheader("Weather Impact Analysis")
 
 # Weather description mapping
@@ -93,24 +108,21 @@ weather_desc = {
     1: "Clear/Partly Cloudy",
     2: "Mist/Cloudy",
     3: "Light Rain/Snow",
-    4: "Heavy Rain/Snow"
+    4: "Heavy Rain/Ice Pallets"
 }
 
-# Add weather description column
 filtered_df['weather_desc'] = filtered_df['weathersit'].map(weather_desc)
 
-# Create tabs for different weather visualizations
 tab1, tab2 = st.tabs(["Average Rentals by Weather", "Weather Distribution"])
 
+# Bar Chart
 with tab1:
-    # Calculate average rentals by weather
     weather_avg = filtered_df.groupby('weather_desc').agg({
         'casual': 'mean',
         'registered': 'mean',
         'cnt': 'mean'
     }).round(2)
 
-    # Create bar chart
     fig_weather = px.bar(
         weather_avg,
         barmode='group',
@@ -121,8 +133,8 @@ with tab1:
     
     st.plotly_chart(fig_weather, use_container_width=True)
 
+# Scatter plot of temperature vs rentals colored by weather
 with tab2:
-    # Create scatter plot of temperature vs rentals colored by weather
     fig_scatter = px.scatter(
         filtered_df,
         x='temp',
@@ -139,7 +151,7 @@ with tab2:
     
     st.plotly_chart(fig_scatter, use_container_width=True)
 
-# Add correlation heatmap for weather-related variables
+# Correlation heatmap for weather-related variables
 st.subheader("Weather Factors Correlation")
 weather_vars = ['temp', 'atemp', 'hum', 'windspeed', 'cnt']
 corr_matrix = filtered_df[weather_vars].corr()
